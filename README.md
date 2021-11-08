@@ -1,27 +1,27 @@
 Gestures for Kivy
 =================
 
-*A Gestures api in place of (and depending on) the Kivy touch api*
+*Detect common touch gestures in Kivy apps*
 
 ## Install
 
 For a desktop OS:
 
-pip3 install git+https://github.com/Android-for-Python/gestures4kivy.git
+pip3 install gestures4kivy
 
-For Android add this to buildozer.spec requirements:
+For Android:
 
-git+https://github.com/Android-for-Python/gestures4kivy.git
+Add gestures4kivy to buildozer.spec requirements.
+
+Import using:
+```
+from gestures4kivy import CommonGestures
+```
 
 This is required at the top of the app's main.py to disable a Kivy feature:
 ```
 # Dispose of that nasty red dot.
 Config.set('input', 'mouse', 'mouse, disable_multitouch')
-```
-
-Import with:
-```
-from gestures4kivy import CommonGestures
 ```
 
 ## Behavior
