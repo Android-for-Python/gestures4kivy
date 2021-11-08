@@ -21,7 +21,6 @@ from gestures4kivy import CommonGestures
 
 This is required at the top of the app's main.py to disable a Kivy feature:
 ```
-# Dispose of that nasty red dot.
 Config.set('input', 'mouse', 'mouse, disable_multitouch')
 ```
 
