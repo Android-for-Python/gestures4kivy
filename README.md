@@ -6,12 +6,13 @@ Gestures for Kivy
 ## Install
 
 For a desktop OS:
-
+```
 pip3 install gestures4kivy
+```
 
 For Android:
 
-Add gestures4kivy to buildozer.spec requirements.
+Add `gestures4kivy` to `buildozer.spec` requirements.
 
 Import using:
 ```
