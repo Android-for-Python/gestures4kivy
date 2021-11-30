@@ -132,6 +132,22 @@ Where the `swipe_screen()` method configures the screen manager. This is fully i
 
 ## Hardware Considerations
 
+#### Mouse
+
+As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated with press the left mouse button, and end when the press ends. The right mouse button generates a `cg_two_finger_tap()` callback.
+
+Mouse wheel movement generates t `cg_wheel()`, `cg_shift_wheel()`, and `cg_ctrl_wheel()` callbacks.
+
+#### Touch Pad
+
+As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated with **'one and a half taps'**, or a press on the bottom left corner of the trackpad. 
+
+Two finger pinch/spread uses the cursor location as focus. Note that the cursor may move significantly during a pinch/spread.
+
+A two finger move is interpreted by a touch pad as the equivalent mouse wheel event, however a horizontal move used for paging screens may exhibit latency or over sensitivity [https://github.com/kivy/kivy/issues/7707](https://github.com/kivy/kivy/issues/7707). A two finger tap generates a `cg_two_finger_tap()` callback.
+
+## OS Considerations
+
 ### Android
 
 Pinch/spread focus is the mid point between two fingers. The mouse wheel callbacks are not generated.
@@ -147,21 +163,7 @@ You can change this from the default 250mS, for example:
 
 On some touchpads pinch/spread will not be detected the if 'mouse, disable_multitouch' feature is not disabled.
 
-Some touch pads report a pinch/spread as a finger movement `cg_scale()`, and some detect the gesture internally and report it as a `cg_ctrl_wheel()`. The safe thing to do is handle both cases.
-
-#### Mouse
-
-As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated with press the left mouse button, and end when the press ends. The right mouse button generates a `cg_two_finger_tap()` callback.
-
-Mouse wheel movement generates t `cg_wheel()`, `cg_shift_wheel()`, and `cg_ctrl_wheel()` callbacks.
-
-#### Touch Pad
-
-As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated with **'one and a half taps'**, or a press on the bottom left corner of the trackpad. 
-
-Two finger pinch/spread uses the cursor location as focus. Note that the cursor may move significantly during a pinch/spread.
-
-A two finger move is interpreted by a touch pad as the equivalent mouse wheel event, however a horizontal move used for paging screens may exhibit latency [https://github.com/kivy/kivy/issues/7707](https://github.com/kivy/kivy/issues/7707). A two finger tap generates a `cg_two_finger_tap()` callback.
+Some touch pads report a pinch/spread as a finger movement `cg_scale()`, and some detect the gesture internally and report it as a `cg_ctrl_wheel()`. The safe thing to do is handle both cases in an application.
 
 ### Mac
 
@@ -175,7 +177,8 @@ See [https://github.com/kivy/kivy/issues/7708](https://github.com/kivy/kivy/issu
 Not tested
 
 ### Linux
-Not tested
+
+No Linux specific issues. However when [https://github.com/kivy/kivy/issues/7709](https://github.com/kivy/kivy/issues/7709) is fixed, an update of this package will be required.
 
 
 ## Acknowledgement

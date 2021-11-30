@@ -82,12 +82,20 @@ class CommonGestures(Widget):
                 self._gesture_state = 'Wheel'
                 scale = self._WHEEL_SENSITIVITY
                 x, y = self._pos_to_widget(touch.x, touch.y)
-                if touch.button == 'scrollleft':
+                #### https://github.com/kivy/kivy/issues/7709
+                tb = touch.button
+                if platform == 'linux':
+                    if touch.button == 'scrollleft':
+                        tb = 'scrollright'
+                    elif touch.button == 'scrollright':
+                        tb = 'scrollleft'
+                #### end 7709 , but used below
+                if tb == 'scrollleft':
                     if touch.time_start > self._two_finger_time  + 0.6 :
                         self.cg_swipe_horizontal(touch, False) 
                         self._two_finger_time = touch.time_start
                     self.cg_shift_wheel(touch,1/scale, x, y)
-                elif touch.button == 'scrollright':
+                elif tb == 'scrollright':
                     if touch.time_start > self._two_finger_time  + 0.6 :
                         self.cg_swipe_horizontal(touch, True) 
                         self._two_finger_time = touch.time_start
