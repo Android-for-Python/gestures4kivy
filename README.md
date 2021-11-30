@@ -134,7 +134,9 @@ Where the `swipe_screen()` method configures the screen manager. This is fully i
 
 #### Mouse
 
-As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated with press the left mouse button, and end when the press ends. The right mouse button generates a `cg_two_finger_tap()` callback.
+As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated with press the left mouse button, and end when the press ends.
+
+The right mouse button generates a `cg_two_finger_tap()` callback.
 
 Mouse wheel movement generates t `cg_wheel()`, `cg_shift_wheel()`, and `cg_ctrl_wheel()` callbacks.
 
