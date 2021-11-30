@@ -161,7 +161,7 @@ As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated wit
 
 Two finger pinch/spread uses the cursor location as focus. Note that the cursor may move significantly during a pinch/spread.
 
-A two finger move is interpreted by a touch pad as the equivalent mouse wheel event. A two finger tap generates a `cg_two_finger_tap()` callback.
+A two finger move is interpreted by a touch pad as the equivalent mouse wheel event, however a horizontal move used for paging screens may exhibit latency [https://github.com/kivy/kivy/issues/7707](https://github.com/kivy/kivy/issues/7707). A two finger tap generates a `cg_two_finger_tap()` callback.
 
 ### Mac
 
@@ -169,15 +169,13 @@ Two finger pinch/spread is not available. Use `Command` and `vertical scroll`.
 
 Force Click (deep press) is reported as a long press, this is a happy coincidence and not by design.
 
+See [https://github.com/kivy/kivy/issues/7708](https://github.com/kivy/kivy/issues/7708).
+
 ### iOS
 Not tested
 
 ### Linux
 Not tested
-
-### Rasberry
-Not tested
-
 
 
 ## Acknowledgement

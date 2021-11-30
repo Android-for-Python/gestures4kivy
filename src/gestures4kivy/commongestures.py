@@ -51,6 +51,9 @@ class CommonGestures(Widget):
         self._SWIPE_TIME          = 0.3                 # sec 
         self._SWIPE_VELOCITY      = 5                   # inches/sec, heuristic
         self._WHEEL_SENSITIVITY   = 1.1                 # heuristic
+        self._persistent_pos = [(0,0),(0,0)]
+        self._two_finger_time = 0 
+
 
     #####################
     # Kivy Touch Events
@@ -80,8 +83,14 @@ class CommonGestures(Widget):
                 scale = self._WHEEL_SENSITIVITY
                 x, y = self._pos_to_widget(touch.x, touch.y)
                 if touch.button == 'scrollleft':
+                    if touch.time_start > self._two_finger_time  + 0.6 :
+                        self.cg_swipe_horizontal(touch, False) 
+                        self._two_finger_time = touch.time_start
                     self.cg_shift_wheel(touch,1/scale, x, y)
                 elif touch.button == 'scrollright':
+                    if touch.time_start > self._two_finger_time  + 0.6 :
+                        self.cg_swipe_horizontal(touch, True) 
+                        self._two_finger_time = touch.time_start
                     self.cg_shift_wheel(touch,scale, x, y)
                 else: 
                     if touch.button == 'scrollup':
@@ -113,7 +122,6 @@ class CommonGestures(Widget):
                                                         touch.x, touch.y),
                                                 self._DOUBLE_TAP_TIME)
 
-                self._persistent_pos = [(0,0),(0,0)]
                 self._persistent_pos[0] = tuple(touch.pos)
             elif len(self._touches) == 2:
                 self._gesture_state = 'Scale'
@@ -227,8 +235,8 @@ class CommonGestures(Widget):
     ### long press clock ###
     def _long_press_event(self, touch, x, y, ox, oy, dt):
         self._long_press_schedule = None
-        distance_squared = (x -ox)**2 + (y -oy)**2
-        if distance_squared < self._DOUBLE_TAP_DISTANCE **2:
+        distance_squared = (x - ox) ** 2 + (y - oy) ** 2
+        if distance_squared < self._DOUBLE_TAP_DISTANCE ** 2:
             x, y = self._pos_to_widget(x, y)
             self.cg_long_press(touch, x, y)
             self._gesture_state = 'Long Pressed'
@@ -255,7 +263,7 @@ class CommonGestures(Widget):
         x, y = touch.pos 
         ox, oy = touch.opos
         period = touch.time_update - touch.time_start
-        distance = sqrt((x-ox)**2 + (y-oy)**2)
+        distance = sqrt((x - ox) ** 2 + (y - oy) ** 2)
         if period:
             velocity = distance / (period * Metrics.dpi)
         else:
@@ -280,7 +288,7 @@ class CommonGestures(Widget):
     def _velocity_now(self, touch):
         period = touch.time_update - self._velt
         x, y = touch.pos
-        distance = sqrt((x - self._velx)**2 + (y - self._vely)**2)
+        distance = sqrt((x - self._velx) ** 2 + (y - self._vely) ** 2)
         self._velt = touch.time_update
         self._velx , self._vely = touch.pos
         if period:
@@ -307,8 +315,8 @@ class CommonGestures(Widget):
     def _scale_midpoint(self):
         x0, y0 = self._persistent_pos[0]
         x1, y1 = self._persistent_pos[1]
-        midx = abs(x0 - x1)/2 + min(x0, x1)
-        midy = abs(y0 - y1)/2 + min(y0, y1)
+        midx = abs(x0 - x1) / 2 + min(x0, x1)
+        midy = abs(y0 - y1) / 2 + min(y0, y1)
         # convert to widget
         x = midx - self.x
         y = midy - self.y
