@@ -184,8 +184,14 @@ Not tested
 
 ### Linux
 
-No Linux specific issues. However when [https://github.com/kivy/kivy/issues/7709](https://github.com/kivy/kivy/issues/7709) is fixed, an update of this package will be required.
+Tested on Raspberry Desktop. Using a touchpad the behavior is non-deterministic, and cannot be used. Use a mouse.
 
+Using a mouse on 'Buster' the `[input]` section in `~/.kivy/config.ini` should contain only one entry:
+```
+[input]
+mouse = mouse
+```
+Using 'Bullseye' the Kivy default config is good when using a mouse.
 
 ## Acknowledgement
 
