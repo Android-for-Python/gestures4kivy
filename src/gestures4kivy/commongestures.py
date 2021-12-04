@@ -51,8 +51,9 @@ class CommonGestures(Widget):
         self._SWIPE_TIME          = 0.3                 # sec 
         self._SWIPE_VELOCITY      = 5                   # inches/sec, heuristic
         self._WHEEL_SENSITIVITY   = 1.1                 # heuristic
+        self._PAGE_FILTER         = 0.15                 # heuristic
         self._persistent_pos = [(0,0),(0,0)]
-        self._two_finger_time = 0 
+        self._page_schedule = None
 
 
     #####################
@@ -83,20 +84,13 @@ class CommonGestures(Widget):
                 scale = self._WHEEL_SENSITIVITY
                 x, y = self._pos_to_widget(touch.x, touch.y)
                 if touch.button == 'scrollleft':
-                    # filter bogus events https://github.com/kivy/kivy/issues/7707
-                    if platform != 'win' or\
-                       touch.time_start > self._two_finger_time  + 0.6 :
-                        self.cg_swipe_horizontal(touch, False) 
-                        self._two_finger_time = touch.time_start
+                    self._gesture_state = 'PotentialPage'
                     self.cg_shift_wheel(touch,1/scale, x, y)
                 elif touch.button == 'scrollright':
-                    # filter bogus events https://github.com/kivy/kivy/issues/7707
-                    if platform != 'win' or\
-                       touch.time_start > self._two_finger_time  + 0.6 :
-                        self.cg_swipe_horizontal(touch, True) 
-                        self._two_finger_time = touch.time_start
+                    self._gesture_state = 'PotentialPage'
                     self.cg_shift_wheel(touch,scale, x, y)                
                 else: 
+                    self._gesture_state = 'Wheel'
                     if touch.button == 'scrollup':
                         scale = 1/scale
                     if self._CTRL:
@@ -224,6 +218,10 @@ class CommonGestures(Widget):
             elif self._gesture_state == 'Long Pressed':
                 self.cg_long_press_end(touch, x, y)
                 self._new_gesture()
+
+            elif self._gesture_state == 'PotentialPage':
+                self._potential_page(touch)
+                self._new_gesture()
                 
             elif self._gesture_state == 'Wheel' or\
                  self._gesture_state == 'Swipe':
@@ -299,6 +297,26 @@ class CommonGestures(Widget):
             return distance / (period * Metrics.dpi) 
         else:
             return 0
+
+    ### potential page ####
+    def _potential_page(self,touch):
+        right = touch.button == 'scrollright'
+        if platform == 'win':
+            # https://github.com/kivy/kivy/issues/7707
+            # Windows generates lots of events, pick the last one.
+            # Else a new page request may occur after we have paged.
+            # This introduces latency :(
+            if self._page_schedule:
+                Clock.unschedule(self._page_schedule)
+            self._page_schedule =\
+                Clock.schedule_once(partial(self._horizontal_page, touch,
+                                            right), self._PAGE_FILTER)
+        else:
+            self._horizontal_page(touch, right, dt)    
+        
+    def _horizontal_page(self, touch, right, dt):
+        self._page_schedule = None
+        self.cg_swipe_horizontal(touch, right) 
         
     ### touch direction ###
     # direction is the same with or without RelativeLayout
