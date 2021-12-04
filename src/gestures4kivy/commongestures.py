@@ -312,7 +312,7 @@ class CommonGestures(Widget):
                 Clock.schedule_once(partial(self._horizontal_page, touch,
                                             right), self._PAGE_FILTER)
         else:
-            self._horizontal_page(touch, right, dt)    
+            self._horizontal_page(touch, right, 0)    
         
     def _horizontal_page(self, touch, right, dt):
         self._page_schedule = None
