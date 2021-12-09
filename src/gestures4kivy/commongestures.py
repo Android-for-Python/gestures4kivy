@@ -29,6 +29,9 @@ from functools import partial
 from time import time
 from math import sqrt
 
+# This is a workaround for a Kivy issue described below.
+ENABLE_HORIZONTAL_PAGE = True
+
 class CommonGestures(Widget):
 
     def __init__(self, **kwargs):
@@ -51,9 +54,9 @@ class CommonGestures(Widget):
         self._SWIPE_TIME          = 0.3                 # sec 
         self._SWIPE_VELOCITY      = 5                   # inches/sec, heuristic
         self._WHEEL_SENSITIVITY   = 1.1                 # heuristic
-        self._PAGE_FILTER         = 0.15                 # heuristic
+        self._PAGE_FILTER         = 2.0                 # heuristic
         self._persistent_pos = [(0,0),(0,0)]
-        self._page_schedule = None
+
 
 
     #####################
@@ -83,6 +86,7 @@ class CommonGestures(Widget):
                 self._gesture_state = 'Wheel'
                 scale = self._WHEEL_SENSITIVITY
                 x, y = self._pos_to_widget(touch.x, touch.y)
+
                 if touch.button == 'scrollleft':
                     self._gesture_state = 'PotentialPage'
                     self.cg_shift_wheel(touch,1/scale, x, y)
@@ -303,20 +307,26 @@ class CommonGestures(Widget):
         right = touch.button == 'scrollright'
         if platform == 'win':
             # https://github.com/kivy/kivy/issues/7707
-            # Windows generates lots of events, pick the last one.
-            # Else a new page request may occur after we have paged.
-            # This introduces latency :(
-            if self._page_schedule:
-                Clock.unschedule(self._page_schedule)
-            self._page_schedule =\
-                Clock.schedule_once(partial(self._horizontal_page, touch,
-                                            right), self._PAGE_FILTER)
+            # Windows generates lots of extra events in this case.
+            # Pick the first one and inhibit responding to the
+            # following ones for the next 2 seconds
+            # A following event may be processed after we have
+            # changed screens, in which case we get events sent
+            # to the new screen, and an extra screen change, or more.
+            # Local fix is a global, which is shared between screens.
+            # A better fix would be a Kivy event filter.
+            global ENABLE_HORIZONTAL_PAGE
+            if ENABLE_HORIZONTAL_PAGE:
+                ENABLE_HORIZONTAL_PAGE = False
+                Clock.schedule_once(self._re_enable_horizontal_page,
+                                    self._PAGE_FILTER)
+                self.cg_swipe_horizontal(touch, right) 
         else:
-            self._horizontal_page(touch, right, 0)    
+            self.cg_swipe_horizontal(touch, right) 
         
-    def _horizontal_page(self, touch, right, dt):
-        self._page_schedule = None
-        self.cg_swipe_horizontal(touch, right) 
+    def _re_enable_horizontal_page(self, dt):
+        global ENABLE_HORIZONTAL_PAGE
+        ENABLE_HORIZONTAL_PAGE = True
         
     ### touch direction ###
     # direction is the same with or without RelativeLayout

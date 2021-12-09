@@ -169,7 +169,7 @@ On some touchpads pinch/spread will not be detected the if 'mouse, disable_multi
 
 Some touch pads report a pinch/spread as a finger movement `cg_scale()`, and some detect the gesture internally and report it as a `cg_ctrl_wheel()`. The safe thing to do is handle both cases in an application.
 
-A two finger horizontal move, used for paging screens will exhibit latency of up to 1.5 seconds [https://github.com/kivy/kivy/issues/7707](https://github.com/kivy/kivy/issues/7707). 
+A two finger horizontal move is inhibited for 2 second following the previous horizontal move [https://github.com/kivy/kivy/issues/7707](https://github.com/kivy/kivy/issues/7707).
 
 ### Mac
 
