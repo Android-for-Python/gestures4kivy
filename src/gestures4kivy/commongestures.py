@@ -307,13 +307,16 @@ class CommonGestures(Widget):
         right = touch.button == 'scrollright'
         if platform == 'win':
             # https://github.com/kivy/kivy/issues/7707
-            # Windows generates lots of extra events in this case.
-            # Pick the first one and inhibit responding to the
+            # Windows can generate an event storm in this case.
+            # Pick the first one and inhibit handling the
             # following ones for the next 2 seconds
-            # A following event may be processed after we have
-            # changed screens, in which case we get events sent
-            # to the new screen, and an extra screen change, or more.
-            # Local fix is a global, which is shared between screens.
+            #
+            # A following event may pop out of the event queue after we have
+            # changed screens, in which case we get an event sent
+            # to the new screen, and an extra screen change, and sometimes more.
+            #
+            # Here the workaround is a global containing the filter state,
+            # this will be shared between screens.
             # A better fix would be a Kivy event filter.
             global ENABLE_HORIZONTAL_PAGE
             if ENABLE_HORIZONTAL_PAGE:
