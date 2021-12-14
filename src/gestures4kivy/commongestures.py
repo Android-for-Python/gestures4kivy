@@ -228,6 +228,7 @@ class CommonGestures(Widget):
                 self._new_gesture()
                 
             elif self._gesture_state == 'Wheel' or\
+                 self._gesture_state == 'Disambiguate' or\
                  self._gesture_state == 'Swipe':
                 self._new_gesture()
 
