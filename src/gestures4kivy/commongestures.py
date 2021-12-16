@@ -36,8 +36,8 @@ class CommonGestures(Widget):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        mobile = platform == 'android' or platform == 'ios'
-        if not mobile:
+        self.mobile = platform == 'android' or platform == 'ios'
+        if not self.mobile:
             Window.bind(on_key_down=self._ctrl_key_down)
             Window.bind(on_key_down=self._shift_key_down)
             Window.bind(on_key_up=self._key_up)
@@ -56,7 +56,7 @@ class CommonGestures(Widget):
         self._WHEEL_SENSITIVITY   = 1.1                 # heuristic
         self._PAGE_FILTER         = 2.0                 # heuristic
         self._persistent_pos = [(0,0),(0,0)]
-
+        self._LONG_MOVE_THRESHOLD = self._DOUBLE_TAP_DISTANCE /2
 
 
     #####################
@@ -111,11 +111,12 @@ class CommonGestures(Widget):
                 else:
                     self._gesture_state = 'Dont Know' 
                     # schedule a posssible long press
-                    self._long_press_schedule =\
-                        Clock.schedule_once(partial(self._long_press_event,
-                                                    touch, touch.x, touch.y,
-                                                    touch.ox, touch.oy),
-                                            self._LONG_PRESS)
+                    if not self._long_press_schedule:
+                        self._long_press_schedule =\
+                            Clock.schedule_once(partial(self._long_press_event,
+                                                        touch, touch.x, touch.y,
+                                                        touch.ox, touch.oy),
+                                                self._LONG_PRESS)
                     # schedule a posssible tap 
                     if not self._single_tap_schedule:
                         self._single_tap_schedule =\
@@ -139,7 +140,13 @@ class CommonGestures(Widget):
     ### touch move ###
     def on_touch_move(self, touch):
         if touch in self._touches and self.collide_point(touch.x, touch.y):
-            if touch.dx or touch.dy:
+            # Old Android screens give noisy touch events
+            # which can kill a long press.
+            if (not self.mobile and (touch.dx or touch.dy)) or\
+               (self.mobile and not self._long_press_schedule and\
+                (touch.dx or touch.dy)) or\
+               (self.mobile and (abs(touch.dx) > self._LONG_MOVE_THRESHOLD or\
+                            abs(touch.dy) > self._LONG_MOVE_THRESHOLD)):
                 # If moving it cant be a pending long press or tap
                 self._not_long_press()
                 self._not_single_tap() 
