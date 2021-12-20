@@ -31,6 +31,7 @@ from math import sqrt
 
 # This is a workaround for a Kivy issue described below.
 ENABLE_HORIZONTAL_PAGE = True
+SCHEDULE_HORIZONTAL_PAGE = None
 
 class CommonGestures(Widget):
 
@@ -52,7 +53,13 @@ class CommonGestures(Widget):
         self._LONG_PRESS          = 0.4                 # sec, convention
         self._MOVE_VELOCITY_SAMPLE = 0.2                # sec
         self._SWIPE_TIME          = 0.3                 # sec 
-        self._SWIPE_VELOCITY      = 5                   # inches/sec, heuristic
+        self._SWIPE_VELOCITY      = 7                   # inches/sec, heuristic
+        if platform == 'android':
+            # Old Android devices have insensitive screens
+            from android import api_version
+            if api_version < 28:
+                self._SWIPE_VELOCITY = 5                # inches/sec, heuristic
+                
         self._WHEEL_SENSITIVITY   = 1.1                 # heuristic
         self._PAGE_FILTER         = 2.0                 # heuristic
         self._persistent_pos = [(0,0),(0,0)]
@@ -86,7 +93,6 @@ class CommonGestures(Widget):
                 self._gesture_state = 'Wheel'
                 scale = self._WHEEL_SENSITIVITY
                 x, y = self._pos_to_widget(touch.x, touch.y)
-
                 if touch.button == 'scrollleft':
                     self._gesture_state = 'PotentialPage'
                     self.cg_shift_wheel(touch,1/scale, x, y)
@@ -199,7 +205,8 @@ class CommonGestures(Widget):
 
     ### touch up ###
     def on_touch_up(self, touch):
-        if touch in self._touches: 
+        if touch in self._touches:
+
             self._not_long_press()
             x, y = self._pos_to_widget(touch.x, touch.y)
 
@@ -317,7 +324,7 @@ class CommonGestures(Widget):
             # https://github.com/kivy/kivy/issues/7707
             # Windows can generate an event storm in this case.
             # Pick the first one and inhibit handling the
-            # following ones for the next 2 seconds
+            # following ones till 2 seconds after the 'last' one.
             #
             # A following event may pop out of the event queue after we have
             # changed screens, in which case we get an event sent
@@ -327,11 +334,16 @@ class CommonGestures(Widget):
             # this will be shared between screens.
             # A better fix would be a Kivy event filter.
             global ENABLE_HORIZONTAL_PAGE
+            global SCHEDULE_HORIZONTAL_PAGE
             if ENABLE_HORIZONTAL_PAGE:
                 ENABLE_HORIZONTAL_PAGE = False
-                Clock.schedule_once(self._re_enable_horizontal_page,
-                                    self._PAGE_FILTER)
-                self.cg_swipe_horizontal(touch, right) 
+                self.cg_swipe_horizontal(touch, right)
+            if SCHEDULE_HORIZONTAL_PAGE:
+                Clock.unschedule(SCHEDULE_HORIZONTAL_PAGE)
+                SCHEDULE_HORIZONTAL_PAGE = None
+            SCHEDULE_HORIZONTAL_PAGE = Clock.schedule_once(
+                self._re_enable_horizontal_page,
+                self._PAGE_FILTER)
         else:
             self.cg_swipe_horizontal(touch, right) 
         
