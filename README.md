@@ -21,14 +21,15 @@ from gestures4kivy import CommonGestures
 
 This is required at the top of the app's main.py to disable a Kivy feature:
 ```
-Config.set('input', 'mouse', 'mouse, disable_multitouch')
+if platform not in ['android', 'ios]:
+    Config.set('input', 'mouse', 'mouse, disable_multitouch')
 ```
 
 ## Behavior
 
 The class `CommonGestures` detects the common gestures for `scale`, `move`, `swipe`, `long press move`, `long press`, `tap`, and `double tap`. A `long press move` is initiated with a `long press`. On the desktop the class also detects `mouse wheel` and the touchpad equivalent `two finger move`. 
 
-Designed for use on Android, the gestures can be used on any Kivy supported platform and input device. To be clear these are Android style gestures that are available across platforms and input devices.
+Originally designed for use on Android, the gestures can be used on any Kivy supported platform and input device.
 
 In addition, for platforms with a mouse scroll wheel the usual conventions are detected: `scroll wheel` can be used for vertical scroll, `shift-scroll wheel` can be used for horizontal scroll, and `ctrl-scroll wheel` can be used for zoom. Also on touch pads, vertical or horizontal two finger movement emulates a mouse scroll wheel. In addition a mouse right click, or pad two finger tap is detected.
 
@@ -180,7 +181,8 @@ Force Click (deep press) is reported as a long press, this is a happy coincidenc
 See [https://github.com/kivy/kivy/issues/7708](https://github.com/kivy/kivy/issues/7708).
 
 ### iOS
-Not tested
+
+All screen gestures work.
 
 ### Linux
 

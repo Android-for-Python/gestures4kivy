@@ -53,7 +53,7 @@ class CommonGestures(Widget):
         self._LONG_PRESS          = 0.4                 # sec, convention
         self._MOVE_VELOCITY_SAMPLE = 0.2                # sec
         self._SWIPE_TIME          = 0.3                 # sec 
-        self._SWIPE_VELOCITY      = 7                   # inches/sec, heuristic
+        self._SWIPE_VELOCITY      = 6                   # inches/sec, heuristic
         if platform == 'android':
             # Old Android devices have insensitive screens
             from android import api_version
@@ -85,8 +85,11 @@ class CommonGestures(Widget):
     def on_touch_down(self, touch):
         if self.collide_point(touch.x, touch.y):
             if len(self._touches) == 1 and touch.id == self._touches[0].id:
-                # Filter noise from Kivy
+                # Filter noise from Kivy, one touch.id touches down twice
                 pass
+            elif platform == 'ios' and 'mouse' in str(touch.id):
+                # Filter more noise from Kivy, extra mouse events
+                return super().on_touch_down(touch)
             else:
                 self._touches.append(touch)
             if touch.is_mouse_scrolling:
