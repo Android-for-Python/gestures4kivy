@@ -4,7 +4,7 @@
 #
 # Detects the common gestures for `scale`, `move`, `swipe`, `long press`,
 # `long press move`, `tap`, and `double tap`.
-# A `long press move move` is initiated with a `long press`. 
+# A `long press move` is initiated with a `long press`.
 # On the desktop it also detects `mouse wheel` and the touchpad equivalent
 # `two finger move`.
 #
@@ -29,9 +29,9 @@ from functools import partial
 from time import time
 from math import sqrt
 
-# This is a workaround for a Kivy issue described below.
-ENABLE_HORIZONTAL_PAGE = True
-SCHEDULE_HORIZONTAL_PAGE = None
+# This is a workaround for a SDL2 issue described below.
+PREVIOUS_PAGE_START = 0
+
 
 class CommonGestures(Widget):
 
@@ -45,43 +45,45 @@ class CommonGestures(Widget):
         self._CTRL = False
         self._SHIFT = False
         self._new_gesture()
-        #### Sensitivity
-        self._DOUBLE_TAP_TIME     = Config.getint('postproc',
-                                                  'double_tap_time') / 1000
+        # Sensitivity
+        self._DOUBLE_TAP_TIME = Config.getint('postproc',
+                                              'double_tap_time') / 1000
         self._DOUBLE_TAP_DISTANCE = Config.getint('postproc',
                                                   'double_tap_distance')
-        self._LONG_PRESS          = 0.4                 # sec, convention
-        self._MOVE_VELOCITY_SAMPLE = 0.2                # sec
-        self._SWIPE_TIME          = 0.3                 # sec 
-        self._SWIPE_VELOCITY      = 6                   # inches/sec, heuristic
+        self._LONG_PRESS = 0.4                 # sec, convention
+        self._MOVE_VELOCITY_SAMPLE = 0.2       # sec
+        self._SWIPE_TIME = 0.3                 # sec
+        self._SWIPE_VELOCITY = 6               # inches/sec, heuristic
         if platform == 'android':
             # Old Android devices have insensitive screens
             from android import api_version
             if api_version < 28:
-                self._SWIPE_VELOCITY = 5                # inches/sec, heuristic
-                
-        self._WHEEL_SENSITIVITY   = 1.1                 # heuristic
-        self._PAGE_FILTER         = 2.0                 # heuristic
-        self._persistent_pos = [(0,0),(0,0)]
-        self._LONG_MOVE_THRESHOLD = self._DOUBLE_TAP_DISTANCE /2
+                self._SWIPE_VELOCITY = 5        # inches/sec, heuristic
 
+        self._WHEEL_SENSITIVITY = 1.1           # heuristic
+        self._PAGE_FILTER = 2.0                 # Hz, heuristic
+        self._persistent_pos = [(0, 0), (0, 0)]
+        self._LONG_MOVE_THRESHOLD = self._DOUBLE_TAP_DISTANCE / 2
 
+    '''
     #####################
     # Kivy Touch Events
     #####################
-    # In the case of a RelativeLayout, the touch.pos value is not persistent.
-    # Because the same Touch is called twice, once with Window relative and
-    # once with the RelativeLayout relative values. 
-    # The on_touch_* callbacks have the required value because of collide_point
-    # but only within the scope of that touch callback.
-    #
-    # This is an issue for gestures with persistence, for example two touches.
-    # So if we have a RelativeLayout we can't rely on the value in touch.pos .
-    # So regardless of there being a RelativeLayout, we save each touch.pos
-    # in self._persistent_pos[] and use that when the current value is
-    # required. 
-    
-    ### touch down ###
+    In the case of a RelativeLayout, the touch.pos value is not persistent.
+    Because the same Touch is called twice, once with Window relative and
+    once with the RelativeLayout relative values.
+    The on_touch_* callbacks have the required value because of collide_point
+    but only within the scope of that touch callback.
+
+    This is an issue for gestures with persistence, for example two touches.
+    So if we have a RelativeLayout we can't rely on the value in touch.pos .
+    So regardless of there being a RelativeLayout, we save each touch.pos
+    in self._persistent_pos[] and use that when the current value is
+    required.
+    '''
+
+    #   touch down
+    ##################
     def on_touch_down(self, touch):
         if self.collide_point(touch.x, touch.y):
             if len(self._touches) == 1 and touch.id == self._touches[0].id:
@@ -98,39 +100,39 @@ class CommonGestures(Widget):
                 x, y = self._pos_to_widget(touch.x, touch.y)
                 if touch.button == 'scrollleft':
                     self._gesture_state = 'PotentialPage'
-                    self.cg_shift_wheel(touch,1/scale, x, y)
+                    self.cg_shift_wheel(touch, 1/scale, x, y)
                 elif touch.button == 'scrollright':
                     self._gesture_state = 'PotentialPage'
-                    self.cg_shift_wheel(touch,scale, x, y)                
-                else: 
+                    self.cg_shift_wheel(touch, scale, x, y)
+                else:
                     self._gesture_state = 'Wheel'
                     if touch.button == 'scrollup':
                         scale = 1/scale
                     if self._CTRL:
-                        self.cg_ctrl_wheel(touch,scale, x, y)
+                        self.cg_ctrl_wheel(touch, scale, x, y)
                     elif self._SHIFT:
-                        self.cg_shift_wheel(touch,scale, x, y)
+                        self.cg_shift_wheel(touch, scale, x, y)
                     else:
-                        self.cg_wheel(touch,scale, x, y)
+                        self.cg_wheel(touch, scale, x, y)
 
             elif len(self._touches) == 1:
                 if 'button' in touch.profile and touch.button == 'right':
                     # Two finger tap or right click
-                    self._gesture_state = 'Right' 
+                    self._gesture_state = 'Right'
                 else:
-                    self._gesture_state = 'Dont Know' 
+                    self._gesture_state = 'Dont Know'
                     # schedule a posssible long press
                     if not self._long_press_schedule:
-                        self._long_press_schedule =\
-                            Clock.schedule_once(partial(self._long_press_event,
-                                                        touch, touch.x, touch.y,
-                                                        touch.ox, touch.oy),
-                                                self._LONG_PRESS)
-                    # schedule a posssible tap 
+                        self._long_press_schedule = Clock.schedule_once(
+                            partial(self._long_press_event,
+                                    touch, touch.x, touch.y,
+                                    touch.ox, touch.oy),
+                            self._LONG_PRESS)
+                    # schedule a posssible tap
                     if not self._single_tap_schedule:
                         self._single_tap_schedule =\
                             Clock.schedule_once(partial(self._single_tap_event,
-                                                        touch ,
+                                                        touch,
                                                         touch.x, touch.y),
                                                 self._DOUBLE_TAP_TIME)
 
@@ -138,27 +140,28 @@ class CommonGestures(Widget):
             elif len(self._touches) == 2:
                 self._gesture_state = 'Scale'
                 # If two fingers it cant be a long press, swipe or tap
-                self._not_long_press() 
+                self._not_long_press()
                 self._not_single_tap()
                 self._persistent_pos[1] = tuple(touch.pos)
                 x, y = self._scale_midpoint()
-                self.cg_scale_start(self._touches[0],self._touches[1], x, y)
+                self.cg_scale_start(self._touches[0], self._touches[1], x, y)
 
         return super().on_touch_down(touch)
 
-    ### touch move ###
+    #   touch move
+    #################
     def on_touch_move(self, touch):
         if touch in self._touches and self.collide_point(touch.x, touch.y):
             # Old Android screens give noisy touch events
             # which can kill a long press.
             if (not self.mobile and (touch.dx or touch.dy)) or\
-               (self.mobile and not self._long_press_schedule and\
+               (self.mobile and not self._long_press_schedule and
                 (touch.dx or touch.dy)) or\
-               (self.mobile and (abs(touch.dx) > self._LONG_MOVE_THRESHOLD or\
-                            abs(touch.dy) > self._LONG_MOVE_THRESHOLD)):
+               (self.mobile and (abs(touch.dx) > self._LONG_MOVE_THRESHOLD or
+                                 abs(touch.dy) > self._LONG_MOVE_THRESHOLD)):
                 # If moving it cant be a pending long press or tap
                 self._not_long_press()
-                self._not_single_tap() 
+                self._not_single_tap()
                 # State changes
                 if self._gesture_state == 'Long Pressed':
                     self._gesture_state = 'Long Press Move'
@@ -178,7 +181,7 @@ class CommonGestures(Widget):
                             # 'Swipe' but may not see a touch_up.
                             self._new_gesture()
                     else:
-                        self._gesture_state = 'Move' 
+                        self._gesture_state = 'Move'
 
                 if self._gesture_state == 'Scale':
                     if len(self._touches) <= 2:
@@ -195,18 +198,19 @@ class CommonGestures(Widget):
                                               scale, x, y)
                         self._finger_distance = finger_distance
 
-                else: 
+                else:
                     x, y = self._pos_to_widget(touch.x, touch.y)
                     if self._gesture_state == 'Move':
                         self.cg_move_to(touch, x, y, self._velocity_now(touch))
-                        
+
                     elif self._gesture_state == 'Long Press Move':
                         self.cg_long_press_move_to(touch, x, y,
                                                    self._velocity_now(touch))
-                        
-        return super().on_touch_move(touch)                    
 
-    ### touch up ###
+        return super().on_touch_move(touch)
+
+    #   touch up
+    ###############
     def on_touch_up(self, touch):
         if touch in self._touches:
 
@@ -223,7 +227,7 @@ class CommonGestures(Widget):
 
             elif self._gesture_state == 'Right':
                 self.cg_two_finger_tap(touch, x, y)
-                
+
             elif self._gesture_state == 'Scale':
                 self.cg_scale_end(self._touches[0], self._touches[1])
                 self._new_gesture()
@@ -243,20 +247,21 @@ class CommonGestures(Widget):
             elif self._gesture_state == 'PotentialPage':
                 self._potential_page(touch)
                 self._new_gesture()
-                
+
             elif self._gesture_state == 'Wheel' or\
-                 self._gesture_state == 'Disambiguate' or\
-                 self._gesture_state == 'Swipe':
+                    self._gesture_state == 'Disambiguate' or\
+                    self._gesture_state == 'Swipe':
                 self._new_gesture()
 
-        return super().on_touch_up(touch)                
+        return super().on_touch_up(touch)
 
     ############################################
     # gesture utilities
     ############################################
-    #
 
-    ### long press clock ###
+    #   long press clock
+    ########################
+
     def _long_press_event(self, touch, x, y, ox, oy, dt):
         self._long_press_schedule = None
         distance_squared = (x - ox) ** 2 + (y - oy) ** 2
@@ -270,12 +275,13 @@ class CommonGestures(Widget):
             Clock.unschedule(self._long_press_schedule)
             self._long_press_schedule = None
 
-    ### single tap clock ###
+    #   single tap clock
+    #######################
     def _single_tap_event(self, touch, x, y, dt):
         if self._gesture_state == 'Dont Know':
             if not self._long_press_schedule:
                 x, y = self._pos_to_widget(x, y)
-                self.cg_tap(touch,x,y)
+                self.cg_tap(touch, x, y)
                 self._new_gesture()
 
     def _not_single_tap(self):
@@ -284,7 +290,7 @@ class CommonGestures(Widget):
             self._single_tap_schedule = None
 
     def _possible_swipe(self, touch):
-        x, y = touch.pos 
+        x, y = touch.pos
         ox, oy = touch.opos
         period = touch.time_update - touch.time_start
         distance = sqrt((x - ox) ** 2 + (y - oy) ** 2)
@@ -306,69 +312,72 @@ class CommonGestures(Widget):
         return False
 
     def _velocity_start(self, touch):
-        self._velx , self._vely = touch.opos
+        self._velx, self._vely = touch.opos
         self._velt = touch.time_start
-        
+
     def _velocity_now(self, touch):
         period = touch.time_update - self._velt
         x, y = touch.pos
         distance = sqrt((x - self._velx) ** 2 + (y - self._vely) ** 2)
         self._velt = touch.time_update
-        self._velx , self._vely = touch.pos
+        self._velx, self._vely = touch.pos
         if period:
-            return distance / (period * Metrics.dpi) 
+            return distance / (period * Metrics.dpi)
         else:
             return 0
 
-    ### potential page ####
-    def _potential_page(self,touch):
+    #   potential page
+    #####################
+    def _potential_page(self, touch):
         right = touch.button == 'scrollright'
-        if platform == 'win':
-            # https://github.com/kivy/kivy/issues/7707
-            # Windows can generate an event storm in this case.
-            # Pick the first one and inhibit handling the
-            # following ones till 2 seconds after the 'last' one.
+        if platform in ['win', 'linux']:
+            # Windows/Linux touchpads can generate an event storm
+            # in the case of a two finger horizonal swipe - a page gesture.
+            # SDL2 passes this gesture as many horizonal scroll wheel events,
+            # with no begining or end to the sequence.
             #
-            # A following event may pop out of the event queue after we have
-            # changed screens, in which case we get an event sent
-            # to the new screen, and an extra screen change, and sometimes more.
+            # To inhibit multiple page events, we implement low pass filter.
+            # This filter defaults to 2 Hz. (self._PAGE_FILTER)
             #
-            # Here the workaround is a global containing the filter state,
-            # this will be shared between screens.
-            # A better fix would be a Kivy event filter.
-            global ENABLE_HORIZONTAL_PAGE
-            global SCHEDULE_HORIZONTAL_PAGE
-            if ENABLE_HORIZONTAL_PAGE:
-                ENABLE_HORIZONTAL_PAGE = False
-                self.cg_swipe_horizontal(touch, right)
-            if SCHEDULE_HORIZONTAL_PAGE:
-                Clock.unschedule(SCHEDULE_HORIZONTAL_PAGE)
-                SCHEDULE_HORIZONTAL_PAGE = None
-            SCHEDULE_HORIZONTAL_PAGE = Clock.schedule_once(
-                self._re_enable_horizontal_page,
-                self._PAGE_FILTER)
-        else:
-            self.cg_swipe_horizontal(touch, right) 
-        
+            # We use a global because if, for example, the page event is used
+            # to switch between Screens, the following storm events will be
+            # processed by a different instance of CommonGestures. So we need
+            # a global state variable for the filter.
+            #
+            # All touchpads generate event storms to some extent. Some older
+            # touchpads, I'm looking at you the otherwise amazing T650, can
+            # generate long event storms. A side effect of the filter is to
+            # inhibit a new swipe gesture until the previous storm has passed.
+            # If this is an issue, use slower or shorter swipes.
+            #
+            # Tested with Logitech T650, Dell notebook, and Magic Trackpad
+            global PREVIOUS_PAGE_START
+            event_storm =\
+                touch.time_start - PREVIOUS_PAGE_START < 1 / self._PAGE_FILTER
+            PREVIOUS_PAGE_START = touch.time_start
+            if event_storm:
+                return
+        self.cg_swipe_horizontal(touch, right)
+
     def _re_enable_horizontal_page(self, dt):
         global ENABLE_HORIZONTAL_PAGE
         ENABLE_HORIZONTAL_PAGE = True
-        
-    ### touch direction ###
-    # direction is the same with or without RelativeLayout
 
+    #   touch direction
+    # direction is the same with or without RelativeLayout
+    ######################
     def touch_horizontal(self, touch):
         return abs(touch.x-touch.ox) > abs(touch.y-touch.oy)
 
-    def touch_vertical(self, touch):   
+    def touch_vertical(self, touch):
         return abs(touch.y-touch.oy) > abs(touch.x-touch.ox)
 
-    ### Two finger touch ###
-    
+    #  Two finger touch
+    ######################
     def _scale_distance(self):
         x0, y0 = self._persistent_pos[0]
         x1, y1 = self._persistent_pos[1]
-        return sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)    
+        return sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
 
     def _scale_midpoint(self):
         x0, y0 = self._persistent_pos[0]
@@ -380,18 +389,18 @@ class CommonGestures(Widget):
         y = midy - self.y
         return x, y
 
-    ### Every result is in the self frame ###
-
+    #   Every result is in the self frame
+    #########################################
     def _pos_to_widget(self, x, y):
         return (x - self.x, y - self.y)
 
-    ### gesture utilities ###
-
+    #   gesture utilities
+    ########################
     def _remove_gesture(self, touch):
         if touch and len(self._touches):
             if touch in self._touches:
                 self._touches.remove(touch)
-            
+
     def _new_gesture(self):
         self._touches = []
         self._long_press_schedule = None
@@ -401,7 +410,7 @@ class CommonGestures(Widget):
         self._finger_distance = 0
         self._velocity = 0
 
-    ### CTRL SHIFT key detect
+    # CTRL SHIFT key detect
     def _ctrl_key_down(self, a, b, c, d, modifiers):
         command_key = platform == 'macosx' and 'meta' in modifiers
         if 'ctrl' in modifiers or command_key:
@@ -410,7 +419,7 @@ class CommonGestures(Widget):
     def _shift_key_down(self, a, b, c, d, modifiers):
         if 'shift' in modifiers:
             self._SHIFT = True
-        
+
     def _key_up(self, *args):
         self._CTRL = False
         self._SHIFT = False
@@ -420,7 +429,7 @@ class CommonGestures(Widget):
     # define some subset in the derived class
     ############################################
 
-    ############# Tap, Double Tap, and Long Press
+    # Tap, Double Tap, and Long Press
     def cg_tap(self, touch, x, y):
         pass
 
@@ -437,7 +446,7 @@ class CommonGestures(Widget):
     def cg_long_press_end(self, touch, x, y):
         pass
 
-    ############## Move
+    # Move
     def cg_move_start(self, touch, x, y):
         pass
 
@@ -449,7 +458,7 @@ class CommonGestures(Widget):
     def cg_move_end(self, touch, x, y):
         pass
 
-    ############### Move preceded by a long press.
+    # Move preceded by a long press.
     # cg_long_press() called first, cg_long_press_end() is not called
     def cg_long_press_move_start(self, touch, x, y):
         pass
@@ -462,14 +471,14 @@ class CommonGestures(Widget):
     def cg_long_press_move_end(self, touch, x, y):
         pass
 
-    ############### a fast move
+    # a fast move
     def cg_swipe_horizontal(self, touch, left_to_right):
         pass
 
     def cg_swipe_vertical(self, touch, bottom_to_top):
         pass
 
-    ############### pinch/spread
+    # pinch/spread
     def cg_scale_start(self, touch0, touch1, x, y):
         pass
 
@@ -479,16 +488,16 @@ class CommonGestures(Widget):
     def cg_scale_end(self, touch0, touch1):
         pass
 
-    ############# Mouse Wheel, or Windows touch pad two finger vertical move
-    
-    ############# a common shortcut for scroll
+    # Mouse Wheel, or Windows touch pad two finger vertical move
+
+    # a common shortcut for scroll
     def cg_wheel(self, touch, scale, x, y):
         pass
 
-    ############# a common shortcut for pinch/spread
+    # a common shortcut for pinch/spread
     def cg_ctrl_wheel(self, touch, scale, x, y):
         pass
 
-    ############# a common shortcut for horizontal scroll
+    # a common shortcut for horizontal scroll
     def cg_shift_wheel(self, touch, scale, x, y):
         pass
