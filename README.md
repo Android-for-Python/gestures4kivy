@@ -3,198 +3,200 @@ Gestures for Kivy
 
 *Detect common touch gestures in Kivy apps*
 
+**Now with an all new, simpler, input device independent api. The classic api is still implemented, but will be depreciated.**
+
 ## Install
 
-For a desktop OS:
+Desktop OS:
 ```
 pip3 install gestures4kivy
 ```
 
-For Android:
+Android:
 
 Add `gestures4kivy` to `buildozer.spec` requirements.
+
+iOS:
+```
+toolchain pip3 install gestures4kivy
+```
+
+## Usage
 
 Import using:
 ```
 from gestures4kivy import CommonGestures
 ```
 
-This is required at the top of the app's main.py to disable a Kivy feature:
+The following is required at the top of the app's main.py to disable Kivy's multitouch emulation feature:
 ```
-if platform not in ['android', 'ios]:
-    Config.set('input', 'mouse', 'mouse, disable_multitouch')
+Config.set('input', 'mouse', 'mouse, disable_multitouch')
 ```
 
-## Behavior
+The class `CommonGestures` detects the common gestures for primary event, secondary event, select, drag, scroll, pan, zoom, rotate, and page. These are reported in an input device independent way, see below for details.
 
-The class `CommonGestures` detects the common gestures for `scale`, `move`, `swipe`, `long press move`, `long press`, `tap`, and `double tap`. A `long press move` is initiated with a `long press`. On the desktop the class also detects `mouse wheel` and the touchpad equivalent `two finger move`. 
-
-Originally designed for use on Android, the gestures can be used on any Kivy supported platform and input device.
-
-In addition, for platforms with a mouse scroll wheel the usual conventions are detected: `scroll wheel` can be used for vertical scroll, `shift-scroll wheel` can be used for horizontal scroll, and `ctrl-scroll wheel` can be used for zoom. Also on touch pads, vertical or horizontal two finger movement emulates a mouse scroll wheel. In addition a mouse right click, or pad two finger tap is detected.
-
-Each gesture results in a callback, which will contain the required action. These gestures can be **added** to Kivy widgets by subclassing a Kivy Widget and `CommonGestures`, and then including the methods for the required gestures.
+Each gesture results in a callback, which defines the required action. These gestures can be **added** to Kivy widgets by subclassing a Kivy Widget and `CommonGestures`, and then including the methods for the required gestures.
 
 A minimal example is `SwipeScreen`, where we implement one callback method:
-```
-### A swipe sensitive Screen
+```python
+# A swipe sensitive Screen
+
 class SwipeScreen(Screen, CommonGestures):
 
-    def cg_swipe_horizontal(self, touch, right):
+    def cgb_horizontal_page(self, touch, right):
         # here we add the user defined behavior for the gesture
 	# this method controls the ScreenManager in response to a swipe
         App.get_running_app().swipe_screen(right)
 ```
 Where the `swipe_screen()` method configures the screen manager. This is fully implemented along with the other gestures [here](https://github.com/Android-for-Python/Common-Gestures-Example).
 
-`CommonGestures` callback methods detect gestures, they do not define behaviors.
+`CommonGestures` callback methods detect gestures; they do not implement behaviors.
 
 ## API
 
-`CommonGestures` implements these gesture callbacks, a child class may use any subset:
+`CommonGestures` implements the following gesture callbacks, a child class may use any subset. The callbacks are initiated by input device events as described below.
 
+Callback arguments report the original Kivy touch event(s), the focus of a gesture (the location of a cursor, finger, or mid point between two fingers) in Widget coordinates, and parameters representing the change described by a gesture.
+
+Gesture sensitivities can be adjusted by setting values in the class that inherits from `CommonGestures`. These values are contained in the `self._SOME_NAME` variables declared in the `__init__()` method of `CommonGestures`. 
+
+For backwards compatibility a legacy api is implemented (method names begin with 'cg_' not 'cgb_'). The legacy api will eventually be depreciated, and is not documented. 
+
+### Primary event
+```python
+    def cgb_primary(self, touch, focus_x, focus_y):
+        pass
 ```
-    ############################################
-    # User Events
-    # define some subset in the derived class
-    ############################################
+ - Mouse - Left button click
+ - Touchpad - one finger tap 
+ - Mobile  - one finger tap
 
-    ############# Tap and Long Press
-    def cg_tap(self, touch, x, y):
+### Secondary event
+```python
+    def cgb_secondary(self, touch, focus_x, focus_y):
         pass
-
-    def cg_two_finger_tap(self, touch, x, y):
-        # also a mouse right click, desktop only
-        pass
-
-    def cg_double_tap(self, touch, x, y):
-        pass
-
-    def cg_long_press(self, touch, x, y):
-        pass
-
-    def cg_long_press_end(self, touch, x, y):
-        pass
-
-    ############## Move
-    def cg_move_start(self, touch, x, y):
-        pass
-
-    def cg_move_to(self, touch, x, y, velocity):
-        # velocity is average of the last 0.2 sec, in inches/sec  :)
-        pass
-
-    def cg_move_end(self, touch, x, y):
-        pass
-
-    ############### Move preceded by a long press
-    def cg_long_press_move_start(self, touch, x, y):
-        pass
-
-    def cg_long_press_move_to(self, touch, x, y, velocity):
-        # velocity is average of the last 0.2 sec, in inches/sec  :)
-        pass
-
-    def cg_long_press_move_end(self, touch, x, y):
-        pass
-
-    ############### fast horizontal movement
-    def cg_swipe_horizontal(self, touch, left_to_right):
-        pass
-
-    def cg_swipe_vertical(self, touch, bottom_to_top):
-        pass
-
-    ############### pinch/spread
-    def cg_scale_start(self, touch0, touch1, x, y):
-        pass
-
-    def cg_scale(self, touch0, touch1, scale, x, y):
-        pass
-
-    def cg_scale_end(self, touch0, touch1):
-        pass
-
-    ############# Mouse Wheel, or Windows touch pad two finger vertical move
-    
-    ############# a common shortcut for scroll
-    def cg_wheel(self, touch, scale, x, y):
-        pass
-
-    ############# a common shortcut for pinch/spread
-    def cg_ctrl_wheel(self, touch, scale, x, y):
-        pass
-
-    ############# a common shortcut for horizontal scroll
-    def cg_shift_wheel(self, touch, scale, x, y):
-        pass
-	
 ```
+ - Mouse - Right button click
+ - Touchpad - two finger tap 
+ - Mobile  - two finger tap 
 
-## Hardware Considerations
+### Select
+```python
+    def cgb_select(self, touch, focus_x, focus_y, long_press):
+        # If long_press == True
+        # Then on a mobile device set visual feedback.
+        pass
 
-#### Mouse
-
-As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated with press the left mouse button, and end when the press ends.
-
-The right mouse button generates a `cg_two_finger_tap()` callback.
-
-Mouse wheel movement generates t `cg_wheel()`, `cg_shift_wheel()`, and `cg_ctrl_wheel()` callbacks.
-
-#### Touch Pad
-
-As usual, `Move`, `Long Press Move`, `Swipe`, and `Long Press` are initiated with **'one and a half taps'**, or a press on the bottom left corner of the trackpad.
-
-A `Swipe` callback is also generated by a two finger horizonal move. A two finger vertical move initaiates a scroll callback.
-
-A two finger tap generates a `cg_two_finger_tap()` callback.
-
-Two finger pinch/spread uses the cursor location as focus. Note that the cursor may move significantly during a pinch/spread.
-
-## OS Considerations
-
-### Android
-
-Pinch/spread focus is the mid point between two fingers. The mouse wheel callbacks are not generated.
-
-Mobile users are not used to a double tap, so use long press. If you do use double tap, the Kivy default detection time is too short for reliable detection of finger taps.
-You can change this from the default 250mS, for example:
+    def cgb_long_press_end(self, touch, focus_x, focus_y):
+        # Only called if cgb_select() long_press argument was True
+        # On mobile device reset visual feedback.
+        pass
 ```
-    from kivy.config import Config
-    Config.set('postproc', 'double_tap_time', '500')
+ - Mouse - double click
+ - Touchpad - double tap, or long deep press  
+ - Mobile  - double tap, long press
+
+`cgb_long_press_end()` is called when a user raises a finger after a long press. This may occur after a select or after a drag initiated by a long press.
+
+### Drag
+```python
+    def cgb_drag(self, touch, focus_x, focus_y, delta_x, delta_y):
+        pass
 ```
+ - Mouse - hold mouse button and move mouse   
+ - Touchpad - deep press (or one and a half taps) and move finger
+ - Mobile  - long press (provide visual feeback) and move finger
 
-### Windows
+### Scroll
+```python
+    def cgb_scroll(self, touch, focus_x, focus_y, delta_y, velocity):
+        pass
+```
+ - Mouse - rotate scroll wheel
+ - Touchpad - two finger vertical motion
+ - Mobile  - one finger vertical motion
 
-On some touchpads pinch/spread will not be detected the if 'mouse, disable_multitouch' feature is not disabled.
+A scroll gesture is very similar to a vertical page gesture, using the two in the same layout may be a challenge particularly on a touchpad.
 
-Some touch pads report a pinch/spread as a finger movement `cg_scale()`, and some detect the gesture internally and report it as a `cg_ctrl_wheel()`. The safe thing to do is handle both cases in an application.
+### Pan
+```python
+    def cgb_pan(self, touch, focus_x, focus_y, delta_x, velocity):
+        pass
+```
+ - Mouse - Press Shift key, and rotate scroll wheel
+ - Touchpad - two finger horizontal motion
+ - Mobile  - one finger horizontal motion
 
-A two finger horizontal move is inhibited for 2 second following the previous horizontal move [https://github.com/kivy/kivy/issues/7707](https://github.com/kivy/kivy/issues/7707).
+A pan gesture is very similar to a horizontal page gesture, using the two in the same layout may be a challenge particularly on a touchpad.
+
+### Zoom
+```python
+    def cgb_zoom(self, touch0, touch1, focus_x, focus_y, delta_scale):
+        pass
+```
+ - Mouse - Press Ctrl key, and rotate scroll wheel
+ - Touchpad - two finger pinch/spread
+ - Mobile  - two finger  pinch/spread
+
+On a Mac, the Command key is the convention for zoom, either Command or Ctrl can be used.
+
+The touch1 parameter may be `None`.
+
+### Rotate
+```python
+    def cgb_rotate(self, touch0, touch1, focus_x, focus_y, delta_angle):
+        pass
+```
+ - Mouse - Press Alt key, and rotate scroll wheel
+ - Touchpad - Press Alt key, plus two finger vertical motion 
+ - Mobile  - two finger twist
+
+On a Mac, Alt is the key labeled Option
+
+On Linux, Alt is not available as a modifier, use the sequence CapsLock,Scroll,CapsLock.
+
+The touch1 parameter may be `None`.
+
+### Horizontal Page
+```python
+    def cgb_horizontal_page(self, touch, left_to_right):
+        pass
+```
+ - Mouse - hold mouse button and fast horizontal move mouse
+ - Touchpad - fast two finger horizontal motion 
+ - Mobile  - fast one finger horizontal motion
+
+See [Pan](#pan) for possible interactions.
+
+### Vertical Page
+```python
+    def cgb_vertical_page(self, touch, bottom_to_top):
+        pass
+```
+ - Mouse - hold mouse button and fast vertical move mouse
+ - Touchpad - fast two finger vertical motion 
+ - Mobile  - fast one finger vertical motion
+
+See [Scroll](#scroll) for possible interactions.
+
+
+## Known Issues:
+
+### Kivy Multitouch
+
+Kivy multitouch must be disabled. A ctrl-scroll with a mouse (the common convention for zoom), a pinch-spread with a touchpad, a right click, or a two finger tap will place an orange dot on the screen and inhibit zoom functionality.
+
+```python
+Config.set('input', 'mouse', 'mouse, disable_multitouch')
+```
 
 ### Mac
 
-Two finger pinch/spread is not available. Use `Command` and `vertical scroll`.
-
-Force Click (deep press) is reported as a long press, this is a happy coincidence and not by design.
-
-See [https://github.com/kivy/kivy/issues/7708](https://github.com/kivy/kivy/issues/7708).
-
-### iOS
-
-All screen gestures work.
+Trackpap two finger pinch/spread is not available. Use `Command` or `Ctrl` and `Scroll`. This is apparently an SDl2 issue.
 
 ### Linux
 
-Tested on Raspberry Desktop. Using a touchpad the behavior is non-deterministic, and cannot be used. Use a mouse.
+Alt is not a keyboard modifier on Linux. For the rotate operation set CapsLock, scroll, and unset CapsLock.
 
-Using a mouse on 'Buster' the `[input]` section in `~/.kivy/config.ini` should contain only one entry:
-```
-[input]
-mouse = mouse
-```
-Using 'Bullseye' the Kivy default config is good when using a mouse.
 
-## Acknowledgement
 
-A big thank you to Elliot for his analysis, constructive suggestions, and testing.
