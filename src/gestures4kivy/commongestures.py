@@ -258,7 +258,8 @@ class CommonGestures(Widget):
                     self._velocity_start(touch)
                     self.cg_move_start(touch, x, y)
 
-                if self._gesture_state == 'Disambiguate':
+                if self._gesture_state == 'Disambiguate' and\
+                   self.mobile and len(self._touches) == 1:
                     self._gesture_state = 'Move'
                     # schedule a posssible swipe
                     if not self._swipe_schedule:
@@ -308,14 +309,11 @@ class CommonGestures(Widget):
                     if self._gesture_state == 'Move':
                         v = self._velocity_now(touch)
                         self.cg_move_to(touch, x, y, v)
-                        if self.mobile:
-                            ox, oy = self._pos_to_widget(touch.ox, touch.oy)
-                            if abs(x - ox) > abs(y - oy):
-                                self.cgb_pan(touch, x, y, delta_x, v)
-                            else:
-                                self.cgb_scroll(touch, x, y, delta_y, v)
+                        ox, oy = self._pos_to_widget(touch.ox, touch.oy)
+                        if abs(x - ox) > abs(y - oy):
+                            self.cgb_pan(touch, x, y, delta_x, v)
                         else:
-                            self.cgb_drag(touch, x, y, delta_x, delta_y)
+                            self.cgb_scroll(touch, x, y, delta_y, v)
                     elif self._gesture_state == 'Long Press Move':
                         self.cg_long_press_move_to(touch, x, y,
                                                    self._velocity_now(touch))
@@ -424,9 +422,6 @@ class CommonGestures(Widget):
             wox, woy = self._pos_to_widget(ox, oy)
             self.cg_move_to(touch, wox, woy, self._velocity)
             self.cg_move_end(touch, wox, woy)
-            if not self.mobile:
-                # reset drag
-                self.cgb_drag(touch, wox, woy, ox - x, oy - y)
             if self.touch_horizontal(touch):
                 self.cg_swipe_horizontal(touch, x-ox > 0)
                 self.cgb_horizontal_page(touch, x-ox > 0)
