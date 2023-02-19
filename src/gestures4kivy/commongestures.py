@@ -259,7 +259,7 @@ class CommonGestures(Widget):
                     self.cg_move_start(touch, x, y)
 
                 if self._gesture_state == 'Disambiguate' and\
-                   self.mobile and len(self._touches) == 1:
+                   len(self._touches) == 1:
                     self._gesture_state = 'Move'
                     # schedule a posssible swipe
                     if not self._swipe_schedule:
