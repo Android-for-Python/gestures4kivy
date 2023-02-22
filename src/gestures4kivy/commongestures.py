@@ -79,7 +79,7 @@ class CommonGestures(Widget):
     #####################
     # Kivy Touch Events
     #####################
-    In the case of a RelativeLayout, the touch.pos value is not persistent.
+    1) In the case of a RelativeLayout, the touch.pos value is not persistent.
     Because the same Touch is called twice, once with Window relative and
     once with the RelativeLayout relative values.
     The on_touch_* callbacks have the required value because of collide_point
@@ -90,6 +90,13 @@ class CommonGestures(Widget):
     So regardless of there being a RelativeLayout, we save each touch.pos
     in self._persistent_pos[] and use that when the current value is
     required.
+
+    2) A ModalView will inhibit touch events to this underlying Widget.
+    If this Widget saw an on_touch_down() and a ModalView inhibits the partner
+    on_touch_up() then this state machine will not reset.
+    For single touch events, not reset, the invalid state will be 'Long Pressed'
+    because this has the longest timer and this timer was not reset.
+    We recover on next on_touch down() with a test for this state.
     '''
 
     #   touch down
@@ -103,6 +110,13 @@ class CommonGestures(Widget):
                 # Filter more noise from Kivy, extra mouse events
                 return super().on_touch_down(touch)
             else:
+                if len(self._touches) == 1 and\
+                   self._gesture_state in ['Long Pressed']:
+                    # Case 2) Previous on_touch_up() was not seen, reset.
+                    self._touches = []
+                    self._gesture_state = 'None'
+                    self._single_tap_schedule = None
+                    self._long_press_schedule = None
                 self._touches.append(touch)
 
             if touch.is_mouse_scrolling:
@@ -190,20 +204,25 @@ class CommonGestures(Widget):
                     self._gesture_state = 'Right'
                 else:
                     self._gesture_state = 'Left'
+                    # schedule a posssible tap
+                    if not self._single_tap_schedule:
+                        self._single_tap_schedule =\
+                            Clock.create_trigger(partial(self._single_tap_event,
+                                                        touch,
+                                                        touch.x, touch.y),
+                                                self._DOUBLE_TAP_TIME)
                     # schedule a posssible long press
                     if not self._long_press_schedule:
-                        self._long_press_schedule = Clock.schedule_once(
+                        self._long_press_schedule = Clock.create_trigger(
                             partial(self._long_press_event,
                                     touch, touch.x, touch.y,
                                     touch.ox, touch.oy),
                             self._LONG_PRESS)
-                    # schedule a posssible tap
-                    if not self._single_tap_schedule:
-                        self._single_tap_schedule =\
-                            Clock.schedule_once(partial(self._single_tap_event,
-                                                        touch,
-                                                        touch.x, touch.y),
-                                                self._DOUBLE_TAP_TIME)
+                    # Hopefully schedules both from the same timestep 
+                    if self._single_tap_schedule:
+                        self._single_tap_schedule()
+                    if self._long_press_schedule:
+                        self._long_press_schedule()
 
                 self._persistent_pos[0] = tuple(touch.pos)
             elif len(self._touches) == 2:
@@ -306,7 +325,7 @@ class CommonGestures(Widget):
                     x, y = self._pos_to_widget(touch.x, touch.y)
                     delta_x = x - self._last_x
                     delta_y = y - self._last_y
-                    if self._gesture_state == 'Move':
+                    if self._gesture_state == 'Move' and self.mobile:
                         v = self._velocity_now(touch)
                         self.cg_move_to(touch, x, y, v)
                         ox, oy = self._pos_to_widget(touch.ox, touch.oy)
@@ -314,7 +333,8 @@ class CommonGestures(Widget):
                             self.cgb_pan(touch, x, y, delta_x, v)
                         else:
                             self.cgb_scroll(touch, x, y, delta_y, v)
-                    elif self._gesture_state == 'Long Press Move':
+                    elif self._gesture_state == 'Long Press Move' or\
+                         (self._gesture_state == 'Move' and not self.mobile):
                         self.cg_long_press_move_to(touch, x, y,
                                                    self._velocity_now(touch))
                         self.cgb_drag(touch, x, y, delta_x, delta_y)
