@@ -52,6 +52,28 @@ Where the `swipe_screen()` method configures the screen manager. This is fully i
 
 `CommonGestures` callback methods detect gestures; they do not implement behaviors.
 
+## Widget Interaction
+
+In the example above gesture detection is *added* to the Widget, however some Kivy widgets consume events so they are not passed to CommonGestures. For example `ScrollView` consumes mouse wheel events so a `cgb_pan` is not detected. 
+
+```python
+class HScrollView(ScrollView, CommonGestures):
+
+    def cgb_pan(self, touch, focus_x, focus_y, delta_x, velocity):
+        print('pan')
+        # this is never called
+```
+
+If this is not the required behavior, change the module resolution order. CommonGestures and ScrollView events will be called. 
+
+```python
+class HScrollView(CommonGestures, ScrollView):
+
+    def cgb_pan(self, touch, focus_x, focus_y, delta_x, velocity):
+        print('pan')
+        # this is always called
+```
+
 ## API
 
 `CommonGestures` implements the following gesture callbacks, a child class may use any subset. The callbacks are initiated by input device events as described below.
