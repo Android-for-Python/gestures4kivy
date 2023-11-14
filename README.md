@@ -3,6 +3,8 @@ Gestures for Kivy
 
 *Detect common touch gestures in Kivy apps*
 
+**2023-11-13 This repository is archived.**
+
 **Now with an all new, simpler, input device independent api. The classic api is still implemented, but will be depreciated.**
 
 ## Install
